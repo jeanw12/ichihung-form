@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { font-family: "Microsoft JhengHei", sans-serif; background:#fde6ea; margin:0; padding:16px; }
+    .card { background:#fff; border-radius:8px; padding:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    h1 { color:#c0392b; }
+    label { font-weight:bold; display:block; margin-bottom:4px; }
+    input[type=text], textarea { width:100%; box-sizing:border-box; padding:8px; margin-bottom:12px; border:1px solid #ccc; border-radius:4px; font-size:14px; }
+    .course-item { display:flex; align-items:flex-start; padding:6px 0; border-bottom:1px solid #f0f0f0; }
+    .course-item input { margin-right:8px; margin-top:4px; }
+    .course-item label { font-weight:normal; margin:0; white-space:pre-line; flex:1; }
+    .course-price { white-space:nowrap; margin-left:8px; color:#c0392b; font-weight:bold; font-size:13px; text-align:right; }
+    .course-class { white-space:nowrap; margin-left:8px; color:#e67e22; font-weight:bold; font-size:13px; text-align:right; }
+    button { background:#c0392b; color:#fff; border:none; padding:12px 24px; font-size:16px; border-radius:4px; cursor:pointer; width:100%; }
+    button:disabled { background:#999; }
+    #result { display:none; }
+    #result .course-list li { margin-bottom:6px; }
+    .total { font-size:18px; font-weight:bold; color:#c0392b; margin-top:8px; }
+    .error { color:red; }
+  </style>
+</head>
+<body>
+
+  <div id="formView">
+    <div class="card">
+      <h1>一芝紅報名表</h1>
+      <p id="courseLinkP"><span id="courseMonth"></span>最新課表 連結：<a id="courseLinkA" href="#" target="_blank"></a></p>
+      <p>完成報名登記後，請私訊 <a href="https://lin.ee/cJAUKTk" target="_blank">https://lin.ee/cJAUKTk</a> 或 ID @720xmglu，並於周內完成付款</p>
+    </div>
+
+    <div class="card">
+      <label>姓名 *</label>
+      <input type="text" id="name" required>
+
+      <label>電話 *</label>
+      <input type="text" id="phone" required>
+
+      <label>Line ID *</label>
+      <input type="text" id="lineId" required>
+    </div>
+
+    <div class="card">
+      <label>報名課程：</label>
+      <div id="courseList"></div>
+    </div>
+
+    <div class="card">
+      <label>備註</label>
+      <p style="margin-top:0;color:#666;font-size:13px;">如想報名線上課程請在下面寫"線上"<br>如需要永康火車站接送請在下面寫"需接送"</p>
+      <textarea id="note" rows="3"></textarea>
+    </div>
+
+    <p id="errMsg" class="error"></p>
+    <button id="submitBtn" onclick="submitForm()">送出報名</button>
+  </div>
+
+  <div id="result">
+    <div class="card">
+      <h1>報名完成！</h1>
+      <p>感謝您的報名，以下是您填寫的內容：</p>
+      <p><b>姓名：</b><span id="r-name"></span></p>
+      <p><b>電話：</b><span id="r-phone"></span></p>
+      <p><b>Line ID：</b><span id="r-lineId"></span></p>
+      <p><b>備註：</b><span id="r-note"></span></p>
+      <p><b>報名課程：</b></p>
+      <ul class="course-list" id="r-courses"></ul>
+      <p class="total" id="r-total"></p>
+      <p>請於一週內私訊 <a href="https://lin.ee/cJAUKTk" target="_blank">LINE</a>（ID @720xmglu）完成付款。</p>
+    </div>
+    <button onclick="resetForm()">再填一筆</button>
+  </div>
+
+  <script>
+    // ★ 請將這裡換成您的 Apps Script 部署網址
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPRyMYAnijvBogNOsK7oxybElvozcJTMf-qkB90p6cSVrXxf-BXSUFCY800k83pMjW/exec';
+
+    // 載入課程清單
+    fetch(SCRIPT_URL + '?action=courses')
+      .then(function(r){ return r.json(); })
+      .then(function(courses){
+        var container = document.getElementById('courseList');
+        courses.forEach(function(c){
+          var div = document.createElement('div');
+          div.className = 'course-item';
+          var id = 'course_' + c.id;
+          var priceHtml = c.price !== null ? '<span class="course-price">$'+c.price+'/人</span>' : '';
+          var labelText = c.classNo ? c.label + '（第'+c.classNo+'班）' : c.label;
+          div.innerHTML = '<input type="checkbox" id="'+id+'" value="'+c.id+'">' +
+                           '<label for="'+id+'">'+labelText+'</label>' +
+                           priceHtml;
+          container.appendChild(div);
+        });
+      });
+
+    // 載入課表連結
+    fetch(SCRIPT_URL + '?action=link')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data.value) {
+          document.getElementById('courseLinkA').href = data.value;
+          document.getElementById('courseLinkA').textContent = data.value;
+        } else {
+          document.getElementById('courseLinkP').style.display = 'none';
+        }
+      });
+
+    // 載入月份文字
+    fetch(SCRIPT_URL + '?action=month')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        document.getElementById('courseMonth').textContent = data.value || '';
+      });
+
+    function submitForm() {
+      var name = document.getElementById('name').value.trim();
+      var phone = document.getElementById('phone').value.trim();
+      var lineId = document.getElementById('lineId').value.trim();
+      var note = document.getElementById('note').value.trim();
+      var errMsg = document.getElementById('errMsg');
+
+      if (!name || !phone || !lineId) {
+        errMsg.textContent = '請填寫姓名、電話、Line ID';
+        return;
+      }
+      errMsg.textContent = '';
+
+      var checked = Array.from(document.querySelectorAll('#courseList input[type=checkbox]:checked'))
+                         .map(function(el){ return el.value; });
+
+      var btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '送出中...';
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ name: name, phone: phone, lineId: lineId, note: note, courseIds: checked })
+      })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          showResult(res);
+        })
+        .catch(function(err){
+          errMsg.textContent = '送出失敗，請稍後再試';
+          btn.disabled = false;
+          btn.textContent = '送出報名';
+        });
+    }
+
+    function showResult(res) {
+      document.getElementById('formView').style.display = 'none';
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('r-name').textContent = res.name;
+      document.getElementById('r-phone').textContent = res.phone;
+      document.getElementById('r-lineId').textContent = res.lineId;
+      document.getElementById('r-note').textContent = res.note || '（無）';
+
+      var ul = document.getElementById('r-courses');
+      ul.innerHTML = '';
+      if (res.courses.length === 0) {
+        ul.innerHTML = '<li>（未選擇課程）</li>';
+      } else {
+        res.courses.forEach(function(c){
+          var li = document.createElement('li');
+          var text = c.label;
+          if (c.price !== null) text += ' $' + c.price + '/人';
+          if (c.classNo) text += '（第' + c.classNo + '班）';
+          li.textContent = text;
+          ul.appendChild(li);
+        });
+      }
+      document.getElementById('r-total').textContent = '預估總金額：$' + res.total + ' 元（不含未標示價格課程）';
+    }
+
+    function resetForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('lineId').value = '';
+      document.getElementById('note').value = '';
+      document.querySelectorAll('#courseList input[type=checkbox]:checked').forEach(function(el){
+        el.checked = false;
+      });
+      document.getElementById('errMsg').textContent = '';
+      var btn = document.getElementById('submitBtn');
+      btn.disabled = false;
+      btn.textContent = '送出報名';
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('formView').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
