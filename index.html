@@ -12,6 +12,7 @@
     .course-item { display:flex; align-items:flex-start; padding:6px 0; border-bottom:1px solid #f0f0f0; }
     .course-item input { margin-right:8px; margin-top:4px; }
     .course-item label { font-weight:normal; margin:0; white-space:pre-line; flex:1; }
+    .course-confirmed { white-space:nowrap; margin-left:8px; color:#e67e22; font-weight:bold; font-size:13px; }
     .course-price { white-space:nowrap; margin-left:8px; color:#c0392b; font-weight:bold; font-size:13px; text-align:right; }
     .course-class { white-space:nowrap; margin-left:8px; color:#e67e22; font-weight:bold; font-size:13px; text-align:right; }
     button { background:#c0392b; color:#fff; border:none; padding:12px 24px; font-size:16px; border-radius:4px; cursor:pointer; width:100%; }
@@ -74,10 +75,8 @@
   </div>
 
   <script>
-    // ★ 請將這裡換成您的 Apps Script 部署網址
     var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPRyMYAnijvBogNOsK7oxybElvozcJTMf-qkB90p6cSVrXxf-BXSUFCY800k83pMjW/exec';
 
-    // 載入課程清單
     fetch(SCRIPT_URL + '?action=courses')
       .then(function(r){ return r.json(); })
       .then(function(courses){
@@ -86,16 +85,17 @@
           var div = document.createElement('div');
           div.className = 'course-item';
           var id = 'course_' + c.id;
+          var confirmedHtml = c.confirmed ? '<span class="course-confirmed">確‼️定‼️開‼️課‼️‼️</span>' : '';
           var priceHtml = c.price !== null ? '<span class="course-price">$'+c.price+'/人</span>' : '';
           var labelText = c.classNo ? c.label + '（第'+c.classNo+'班）' : c.label;
           div.innerHTML = '<input type="checkbox" id="'+id+'" value="'+c.id+'">' +
                            '<label for="'+id+'">'+labelText+'</label>' +
+                           confirmedHtml +
                            priceHtml;
           container.appendChild(div);
         });
       });
 
-    // 載入課表連結
     fetch(SCRIPT_URL + '?action=link')
       .then(function(r){ return r.json(); })
       .then(function(data){
@@ -107,7 +107,6 @@
         }
       });
 
-    // 載入月份文字
     fetch(SCRIPT_URL + '?action=month')
       .then(function(r){ return r.json(); })
       .then(function(data){
@@ -139,10 +138,8 @@
         body: JSON.stringify({ name: name, phone: phone, lineId: lineId, note: note, courseIds: checked })
       })
         .then(function(r){ return r.json(); })
-        .then(function(res){
-          showResult(res);
-        })
-        .catch(function(err){
+        .then(function(res){ showResult(res); })
+        .catch(function(){
           errMsg.textContent = '送出失敗，請稍後再試';
           btn.disabled = false;
           btn.textContent = '送出報名';
@@ -156,7 +153,6 @@
       document.getElementById('r-phone').textContent = res.phone;
       document.getElementById('r-lineId').textContent = res.lineId;
       document.getElementById('r-note').textContent = res.note || '（無）';
-
       var ul = document.getElementById('r-courses');
       ul.innerHTML = '';
       if (res.courses.length === 0) {
@@ -179,9 +175,7 @@
       document.getElementById('phone').value = '';
       document.getElementById('lineId').value = '';
       document.getElementById('note').value = '';
-      document.querySelectorAll('#courseList input[type=checkbox]:checked').forEach(function(el){
-        el.checked = false;
-      });
+      document.querySelectorAll('#courseList input[type=checkbox]:checked').forEach(function(el){ el.checked = false; });
       document.getElementById('errMsg').textContent = '';
       var btn = document.getElementById('submitBtn');
       btn.disabled = false;
